@@ -18,11 +18,8 @@ exports.register = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
-    // Hash the password before saving
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const user = new User({ name, email, password: hashedPassword });
+    // No manual hashing here — model handles it
+    const user = new User({ name, email, password });
     await user.save();
 
     res.status(201).json({ message: 'User registered successfully' });
