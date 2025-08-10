@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 
-// Middleware setup
+// Middleware setups
 
 app.use(helmet());
 
