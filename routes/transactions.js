@@ -1,11 +1,13 @@
-const express = require('express');
+// (implemented by Benjamin Effiong)
+
+const express = require('express'); 
 const router = express.Router();
 const transactionController = require('../controllers/transactions');
 const auth = require('../middleware/auth');  
 // Protect all routes below
 router.use(auth);
 
-// Create a transaction
+// Create a transaction 
 router.post('/', transactionController.createTransaction);
 
 // Get all transactions for user
@@ -17,7 +19,7 @@ router.get('/:id', transactionController.getTransactionById);
 // Update transaction by ID
 router.put('/:id', transactionController.updateTransaction);
 
-// Delete transaction by ID
+// Delete transaction by ID 
 router.delete('/:id', transactionController.deleteTransaction);
 
 module.exports = router;
