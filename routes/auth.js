@@ -89,9 +89,16 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/auth/google/failure' }),
   (req, res) => {
-    // On successful auth, generate JWT and respond
-    const token = generateJwt(req.user);
-    res.json({ token, user: req.user });
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Google authentication failed' });
+      }
+      const token = generateJwt(req.user);
+      res.json({ token, user: req.user });
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 );
 

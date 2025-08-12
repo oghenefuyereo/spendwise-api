@@ -33,8 +33,8 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// Hash password before saving, if modified and password exists
-userSchema.pre("save", async function (next) {
+// Hash password before saving, only if modified and password exists
+userSchema.pre("save", async function(next) {
   if (!this.isModified("password") || !this.password) return next();
 
   try {
@@ -46,10 +46,10 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-// Method to compare password for login validation
+// Compare candidate password with hashed password
 userSchema.methods.comparePassword = async function(candidatePassword) {
   if (!this.password) return false; // OAuth user has no password
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model("user", userSchema);
+module.exports = mongoose.model("User", userSchema);

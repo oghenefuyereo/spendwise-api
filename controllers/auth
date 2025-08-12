@@ -19,7 +19,10 @@ exports.register = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
-    const user = new User({ name, email, password });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const user = new User({ name, email, password: hashedPassword });
     await user.save();
 
     res.status(201).json({ message: 'User registered successfully' });
@@ -50,7 +53,10 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-    res.json({ token });
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email },
+    });
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Server error' });
@@ -80,16 +86,14 @@ exports.googleAuth = async (req, res) => {
       user = await User.findOne({ email });
 
       if (user && !user.googleId) {
-        // Link existing user account with googleId
         user.googleId = googleId;
         await user.save();
       } else if (!user) {
-        // Create new user with googleId, no password
         user = new User({
           name,
           email,
           googleId,
-          password: undefined, // no password for OAuth users
+          // No password for OAuth users
         });
         await user.save();
       }
@@ -97,17 +101,17 @@ exports.googleAuth = async (req, res) => {
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-    res.json({
+    return res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email },
     });
   } catch (error) {
     console.error('Google Auth error:', error);
-    res.status(401).json({ message: 'Invalid Google token' });
+    return res.status(401).json({ message: 'Invalid Google token' });
   }
 };
 
-// Get current user profile (req.userId comes from auth middleware)
+// Get current user profile (req.userId from auth middleware)
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password -googleId');
@@ -119,12 +123,20 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// Update current user profile
+// Update current user profile with email uniqueness check
 exports.updateUserProfile = async (req, res) => {
   try {
     const updates = {};
     if (req.body.name) updates.name = req.body.name;
-    if (req.body.email) updates.email = req.body.email;
+
+    if (req.body.email) {
+      // Check if email is used by another user
+      const emailExists = await User.findOne({ email: req.body.email, _id: { $ne: req.userId } });
+      if (emailExists) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+      updates.email = req.body.email;
+    }
 
     if (req.body.password) {
       const salt = await bcrypt.genSalt(10);
