@@ -8,18 +8,28 @@ passport.use(new GoogleStrategy({
   callbackURL: "/api/auth/google/callback"
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    // Check if user exists
+    // Try to find user by googleId
     let user = await User.findOne({ googleId: profile.id });
 
     if (!user) {
-      // Create new user with info from Google profile
-      user = new User({
-        name: profile.displayName,
-        email: profile.emails[0].value,
-        googleId: profile.id,
-        password: "", // no password since OAuth
-      });
-      await user.save();
+      // Try to find by email (link accounts if needed)
+      user = await User.findOne({ email: profile.emails[0].value });
+
+      if (user) {
+        // Link existing user account with googleId
+        user.googleId = profile.id;
+        user.password = undefined; // Remove password since OAuth user won't have password
+        await user.save();
+      } else {
+        // Create new user with info from Google profile
+        user = new User({
+          name: profile.displayName,
+          email: profile.emails[0].value,
+          googleId: profile.id,
+          password: undefined, // no password since OAuth
+        });
+        await user.save();
+      }
     }
 
     done(null, user);
@@ -28,12 +38,10 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Serialize user (optional for session-based auth)
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-// Deserialize user (optional for session-based auth)
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);

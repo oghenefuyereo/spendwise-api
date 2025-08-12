@@ -20,6 +20,13 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
+// Validation middleware for updating user
+const updateValidation = [
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+  body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+];
+
 // Middleware to check validation results
 function validate(req, res, next) {
   const errors = validationResult(req);
@@ -29,7 +36,22 @@ function validate(req, res, next) {
   next();
 }
 
-// JWT generation helper (you can move this to authController if you want)
+// JWT authentication middleware
+function authenticateJwt(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: 'Authorization header missing' });
+
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Token missing' });
+
+  jwt.verify(token, JWT_SECRET, (err, payload) => {
+    if (err) return res.status(401).json({ message: 'Invalid token' });
+    req.userId = payload.userId;
+    next();
+  });
+}
+
+// JWT generation helper (can also move to authController)
 function generateJwt(user) {
   return jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
 }
@@ -39,6 +61,15 @@ router.post('/register', registerValidation, validate, authController.register);
 
 // Login user with validation
 router.post('/login', loginValidation, validate, authController.login);
+
+// Get current logged-in user's profile (protected)
+router.get('/me', authenticateJwt, authController.getUserProfile);
+
+// Update current logged-in user's profile (protected)
+router.put('/me', authenticateJwt, updateValidation, validate, authController.updateUserProfile);
+
+// Delete current logged-in user's account (protected)
+router.delete('/me', authenticateJwt, authController.deleteUserAccount);
 
 // Passport Google OAuth routes
 
