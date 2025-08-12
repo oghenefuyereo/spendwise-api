@@ -10,33 +10,13 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
-  password: {
-    type: String,
-    // Custom validator: only require minlength if password is provided
-    validate: {
-      validator: function(value) {
-        // If password is provided (not empty), check length >= 6
-        if (this.googleId) return true; // if googleId exists, password can be empty
-        return typeof value === 'string' && value.length >= 6;
-      },
-      message: "Password must be at least 6 characters long",
-    },
-    // password required only if googleId not present
-    required: function() {
-      return !this.googleId;
-    },
-  },
-  googleId: {
-    type: String,
-    unique: true,
-    sparse: true, // allows multiple null values
-  },
+  password: { type: String, required: true, minlength: 6 },
   createdAt: { type: Date, default: Date.now },
 });
 
-// Hash password before saving, if modified and password exists
+// Hash password before saving, if modified
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password") || !this.password) return next();
+  if (!this.isModified("password")) return next();
 
   try {
     const salt = await bcrypt.genSalt(10);
