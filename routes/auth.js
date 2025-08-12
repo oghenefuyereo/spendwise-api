@@ -53,7 +53,7 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/auth/google/failure' }),
   (req, res) => {
-    // Successful authentication
+    // Successful authentication1
     const token = generateJwt(req.user);
     res.json({ token, user: req.user });
   }
