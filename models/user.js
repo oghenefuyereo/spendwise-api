@@ -48,8 +48,8 @@ userSchema.pre("save", async function (next) {
 
 // Method to compare password for login validation
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  if (!this.password) return false; // no password to compare (OAuth user)
-  return await bcrypt.compare(candidatePassword, this.password);
+  if (!this.password) return false; // OAuth user has no password
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model("user", userSchema);

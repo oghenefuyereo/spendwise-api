@@ -11,46 +11,46 @@ const errorHandler = require("./middleware/errorHandler");
 // Load environment variables from .env file
 dotenv.config();
 
-// Passport config (adjust path if needed)
+// Passport configuration (ensure path is correct)
 require("./config/passport");
 
 const app = express();
 
-// Security middleware
+// Apply security-related HTTP headers
 app.use(helmet());
 
-// Enable CORS, allow origin from env or all origins (*)
+// Enable CORS - allow origin from env variable or all origins by default
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "*",
   })
 );
 
-// HTTP request logger
+// HTTP request logging middleware
 app.use(morgan("dev"));
 
-// Body parser middleware
+// Parse JSON bodies
 app.use(express.json());
 
-// Initialize Passport (for authentication)
+// Initialize Passport for authentication
 app.use(passport.initialize());
 
-// Serve Swagger UI docs at /api-docs
+// Serve API docs using Swagger UI at /api-docs
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API route handlers
 app.use("/api/auth", require("./routes/auth"));
-app.use("/api/users", require("./routes/users"));  // <--- Added this line
+app.use("/api/users", require("./routes/users"));  
 app.use("/api/transactions", require("./routes/transactions"));
 app.use("/api/categories", require("./routes/categories"));
 app.use("/api/goals", require("./routes/goals"));
 
-// Root endpoint - simple JSON message
+// Root route to confirm API is running
 app.get("/", (req, res) => {
   res.json({ message: "Spendwise API is running..." });
 });
 
-// Custom error handling middleware
+// Centralized error handling middleware
 app.use(errorHandler);
 
 module.exports = app;
