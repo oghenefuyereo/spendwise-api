@@ -7,7 +7,7 @@ const authController = require('../controllers/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Validation middleware for register
+// Validation middleware for register1
 const registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
