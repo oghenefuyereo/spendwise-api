@@ -7,12 +7,11 @@
   },
   "servers": [
     {
-     "url": "https://spendwise-api-zrh5.onrender.com/api",
+      "url": "https://spendwise-api-zrh5.onrender.com/api",
       "description": "Production server"
-      
     },
     {
-"url": "http://localhost:3000/api",
+      "url": "http://localhost:3000/api",
       "description": "Local server"
     }
   ],
@@ -42,10 +41,35 @@
           "password": { "type": "string", "example": "strongpassword" }
         }
       },
+      "GoogleAuthRequest": {
+        "type": "object",
+        "required": ["tokenId"],
+        "properties": {
+          "tokenId": { "type": "string", "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ij..." }
+        }
+      },
       "AuthResponse": {
         "type": "object",
         "properties": {
-          "token": { "type": "string" }
+          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "example": "64d2f27e6c56d644ab123456" },
+              "name": { "type": "string", "example": "John Doe" },
+              "email": { "type": "string", "format": "email", "example": "john@example.com" }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "example": "Invalid Google token" },
+          "errors": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
         }
       },
       "Transaction": {
@@ -98,7 +122,12 @@
         },
         "responses": {
           "201": { "description": "User registered successfully" },
-          "400": { "description": "Email already in use" }
+          "400": {
+            "description": "Email already in use or validation error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
         }
       }
     },
@@ -123,7 +152,48 @@
               }
             }
           },
-          "400": { "description": "Invalid credentials" }
+          "400": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Google OAuth login/signup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GoogleAuthRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Google login/signup",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing tokenId",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          },
+          "401": {
+            "description": "Invalid Google token",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
+            }
+          }
         }
       }
     },
@@ -177,7 +247,10 @@
           }
         ],
         "responses": {
-          "200": { "description": "Transaction found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Transaction" } } } },
+          "200": {
+            "description": "Transaction found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Transaction" } } }
+          },
           "404": { "description": "Transaction not found" }
         }
       },
@@ -185,10 +258,16 @@
         "tags": ["Transactions"],
         "summary": "Update transaction by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Transaction" } } }
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Transaction" }
+            }
+          }
         },
         "responses": {
           "200": { "description": "Transaction updated" },
@@ -199,7 +278,9 @@
         "tags": ["Transactions"],
         "summary": "Delete transaction by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "responses": {
           "200": { "description": "Transaction deleted" },
           "404": { "description": "Transaction not found" }
@@ -247,9 +328,14 @@
         "tags": ["Categories"],
         "summary": "Get category by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "responses": {
-          "200": { "description": "Category found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Category" } } } },
+          "200": {
+            "description": "Category found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Category" } } }
+          },
           "404": { "description": "Category not found" }
         }
       },
@@ -257,10 +343,14 @@
         "tags": ["Categories"],
         "summary": "Update category by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Category" } } }
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/Category" } }
+          }
         },
         "responses": {
           "200": { "description": "Category updated" },
@@ -271,7 +361,9 @@
         "tags": ["Categories"],
         "summary": "Delete category by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "responses": {
           "200": { "description": "Category deleted" },
           "404": { "description": "Category not found" }
@@ -319,9 +411,14 @@
         "tags": ["Goals"],
         "summary": "Get goal by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "responses": {
-          "200": { "description": "Goal found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } } } },
+          "200": {
+            "description": "Goal found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } } }
+          },
           "404": { "description": "Goal not found" }
         }
       },
@@ -329,10 +426,14 @@
         "tags": ["Goals"],
         "summary": "Update goal by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } } }
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } }
+          }
         },
         "responses": {
           "200": { "description": "Goal updated" },
@@ -343,7 +444,9 @@
         "tags": ["Goals"],
         "summary": "Delete goal by ID",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
         "responses": {
           "200": { "description": "Goal deleted" },
           "404": { "description": "Goal not found" }
