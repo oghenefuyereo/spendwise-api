@@ -15,13 +15,12 @@ const userSchema = new mongoose.Schema({
     // Custom validator: only require minlength if password is provided
     validate: {
       validator: function(value) {
-        // If password is provided (not empty), check length >= 6
-        if (this.googleId) return true; // if googleId exists, password can be empty
-        return typeof value === 'string' && value.length >= 6;
+        // If googleId exists (OAuth user), password not required
+        if (this.googleId) return true;
+        return typeof value === "string" && value.length >= 6;
       },
       message: "Password must be at least 6 characters long",
     },
-    // password required only if googleId not present
     required: function() {
       return !this.googleId;
     },
@@ -46,5 +45,11 @@ userSchema.pre("save", async function (next) {
     next(err);
   }
 });
+
+// Method to compare password for login validation
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password) return false; // no password to compare (OAuth user)
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model("User", userSchema);

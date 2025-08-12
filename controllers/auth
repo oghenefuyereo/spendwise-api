@@ -41,7 +41,6 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
-    // If user was created via Google OAuth and has no password
     if (!user.password) {
       return res.status(400).json({ message: 'Please login with Google OAuth' });
     }
@@ -90,7 +89,7 @@ exports.googleAuth = async (req, res) => {
           name,
           email,
           googleId,
-          password: undefined, // explicitly no password
+          password: undefined, // no password for OAuth users
         });
         await user.save();
       }
@@ -108,7 +107,7 @@ exports.googleAuth = async (req, res) => {
   }
 };
 
-// Get current user profile
+// Get current user profile (req.userId comes from auth middleware)
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password -googleId');

@@ -99,14 +99,28 @@
           "currentprogress": { "type": "number", "example": 200 },
           "deadline": { "type": "string", "format": "date", "example": "2025-12-31" }
         }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "64d2f27e6c56d644ab123456" },
+          "name": { "type": "string", "example": "John Doe" },
+          "email": { "type": "string", "format": "email", "example": "john@example.com" },
+          "googleId": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserUpdate": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
       }
     }
   },
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
+  "security": [{ "bearerAuth": [] }],
   "paths": {
     "/auth/register": {
       "post": {
@@ -114,19 +128,13 @@
         "summary": "Register a new user",
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/UserRegister" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserRegister" } } }
         },
         "responses": {
           "201": { "description": "User registered successfully" },
           "400": {
             "description": "Email already in use or validation error",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
@@ -137,26 +145,16 @@
         "summary": "Login user and get JWT token",
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/UserLogin" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserLogin" } } }
         },
         "responses": {
           "200": {
             "description": "Successful login",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
           },
           "400": {
             "description": "Invalid credentials",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
@@ -167,33 +165,97 @@
         "summary": "Google OAuth login/signup",
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/GoogleAuthRequest" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GoogleAuthRequest" } } }
         },
         "responses": {
           "200": {
             "description": "Successful Google login/signup",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
           },
           "400": {
             "description": "Missing tokenId",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "401": {
             "description": "Invalid Google token",
-            "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get all users",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/User" } }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create a new user",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserRegister" } } }
+        },
+        "responses": {
+          "201": { "description": "User created" },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user by ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
+          },
+          "404": { "description": "User not found" }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user by ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdate" } } }
+        },
+        "responses": {
+          "200": { "description": "User updated" },
+          "404": { "description": "User not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Delete user by ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "User deleted" },
+          "404": { "description": "User not found" }
         }
       }
     },
@@ -205,14 +267,7 @@
         "responses": {
           "200": {
             "description": "List of transactions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Transaction" }
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Transaction" } } } }
           }
         }
       },
@@ -222,11 +277,7 @@
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Transaction" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Transaction" } } }
         },
         "responses": {
           "201": { "description": "Transaction created" }
@@ -239,12 +290,7 @@
         "summary": "Get transaction by ID",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {
@@ -263,11 +309,7 @@
         ],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Transaction" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Transaction" } } }
         },
         "responses": {
           "200": { "description": "Transaction updated" },
@@ -295,14 +337,7 @@
         "responses": {
           "200": {
             "description": "List of categories",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Category" }
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } } } }
           }
         }
       },
@@ -312,11 +347,7 @@
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Category" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Category" } } }
         },
         "responses": {
           "201": { "description": "Category created" }
@@ -348,9 +379,7 @@
         ],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/Category" } }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Category" } } }
         },
         "responses": {
           "200": { "description": "Category updated" },
@@ -378,14 +407,7 @@
         "responses": {
           "200": {
             "description": "List of goals",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Goal" }
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Goal" } } } }
           }
         }
       },
@@ -395,11 +417,7 @@
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/Goal" }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } } }
         },
         "responses": {
           "201": { "description": "Goal created" }
@@ -431,9 +449,7 @@
         ],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Goal" } } }
         },
         "responses": {
           "200": { "description": "Goal updated" },

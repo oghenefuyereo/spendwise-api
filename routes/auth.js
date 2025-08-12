@@ -51,51 +51,53 @@ function authenticateJwt(req, res, next) {
   });
 }
 
-// JWT generation helper (can also move to authController)
+// Helper to generate JWT token
 function generateJwt(user) {
   return jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
 }
 
-// Register a new user with validation
+// Routes
+
+// Register a new user
 router.post('/register', registerValidation, validate, authController.register);
 
-// Login user with validation
+// Login user
 router.post('/login', loginValidation, validate, authController.login);
 
-// Get current logged-in user's profile (protected)
+// Get logged-in user's profile (JWT protected)
 router.get('/me', authenticateJwt, authController.getUserProfile);
 
-// Update current logged-in user's profile (protected)
+// Update logged-in user's profile (JWT protected)
 router.put('/me', authenticateJwt, updateValidation, validate, authController.updateUserProfile);
 
-// Delete current logged-in user's account (protected)
+// Delete logged-in user's account (JWT protected)
 router.delete('/me', authenticateJwt, authController.deleteUserAccount);
 
 // Passport Google OAuth routes
 
-// Step 1: Redirect user to Google for authentication
+// Redirect user to Google OAuth
 router.get(
   '/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Step 2: Google redirects here after user consents
+// Google OAuth callback
 router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/auth/google/failure' }),
   (req, res) => {
-    // Successful authentication
+    // On successful auth, generate JWT and respond
     const token = generateJwt(req.user);
     res.json({ token, user: req.user });
   }
 );
 
-// Failure redirect or response for Google OAuth
+// OAuth failure handler
 router.get('/google/failure', (req, res) => {
   res.status(401).json({ message: 'Google authentication failed' });
 });
 
-// Optional: keep your existing POST /google if you want tokenId based Google auth from client
+// TokenId-based Google OAuth (client sends id token for verification)
 router.post('/google', authController.googleAuth);
 
 module.exports = router;
