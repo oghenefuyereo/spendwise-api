@@ -7,21 +7,19 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// Register new user
+// ------------------------
+// REGISTER
+// ------------------------
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Please provide name, email, and password' });
-    }
+    if (!name || !email || !password)
+      return res.status(400).json({ message: 'Name, email, and password are required' });
 
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ name, email, password: hashedPassword });
     await user.save();
 
@@ -32,86 +30,66 @@ exports.register = async (req, res) => {
   }
 };
 
-// Login user
+// ------------------------
+// LOGIN
+// ------------------------
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
-    }
+    if (!email || !password)
+      return res.status(400).json({ message: 'Email and password are required' });
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-
-    if (!user.password) {
-      return res.status(400).json({ message: 'Please login with Google OAuth' });
-    }
+    if (!user.password) return res.status(400).json({ message: 'Please login with Google OAuth' });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-
-    res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email },
-    });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Google OAuth login/signup
+// ------------------------
+// GOOGLE OAUTH
+// ------------------------
 exports.googleAuth = async (req, res) => {
   const { tokenId } = req.body;
-
-  if (!tokenId) {
-    return res.status(400).json({ message: 'Google tokenId is required' });
-  }
+  if (!tokenId) return res.status(400).json({ message: 'Google tokenId is required' });
 
   try {
-    const ticket = await client.verifyIdToken({
-      idToken: tokenId,
-      audience: GOOGLE_CLIENT_ID,
-    });
-
+    const ticket = await client.verifyIdToken({ idToken: tokenId, audience: GOOGLE_CLIENT_ID });
     const payload = ticket.getPayload();
     const { email, name, sub: googleId } = payload;
 
     let user = await User.findOne({ googleId });
-
     if (!user) {
       user = await User.findOne({ email });
-
       if (user && !user.googleId) {
         user.googleId = googleId;
+        user.password = undefined;
         await user.save();
       } else if (!user) {
-        user = new User({
-          name,
-          email,
-          googleId,
-          // No password for OAuth users
-        });
+        user = new User({ name, email, googleId });
         await user.save();
       }
     }
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-
-    return res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email },
-    });
-  } catch (error) {
-    console.error('Google Auth error:', error);
-    return res.status(401).json({ message: 'Invalid Google token' });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email } });
+  } catch (err) {
+    console.error('Google Auth Error:', err);
+    res.status(401).json({ message: 'Invalid Google token' });
   }
 };
 
-// Get current user profile (req.userId from auth middleware)
+// ------------------------
+// GET CURRENT USER PROFILE
+// ------------------------
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password -googleId');
@@ -123,25 +101,21 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-// Update current user profile with email uniqueness check
+// ------------------------
+// UPDATE USER PROFILE
+// ------------------------
 exports.updateUserProfile = async (req, res) => {
   try {
     const updates = {};
-    if (req.body.name) updates.name = req.body.name;
+    const { name, email, password } = req.body;
 
-    if (req.body.email) {
-      // Check if email is used by another user
-      const emailExists = await User.findOne({ email: req.body.email, _id: { $ne: req.userId } });
-      if (emailExists) {
-        return res.status(400).json({ message: 'Email already in use' });
-      }
-      updates.email = req.body.email;
+    if (name) updates.name = name;
+    if (email) {
+      const emailExists = await User.findOne({ email, _id: { $ne: req.userId } });
+      if (emailExists) return res.status(400).json({ message: 'Email already in use' });
+      updates.email = email;
     }
-
-    if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(req.body.password, salt);
-    }
+    if (password) updates.password = await bcrypt.hash(password, 10);
 
     const user = await User.findByIdAndUpdate(req.userId, updates, { new: true }).select('-password -googleId');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -153,7 +127,9 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
-// Delete current user account
+// ------------------------
+// DELETE USER ACCOUNT
+// ------------------------
 exports.deleteUserAccount = async (req, res) => {
   try {
     await User.findByIdAndDelete(req.userId);

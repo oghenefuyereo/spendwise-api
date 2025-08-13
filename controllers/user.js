@@ -1,7 +1,9 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 
-// Get current user profile
+// ------------------------
+// GET CURRENT USER PROFILE
+// ------------------------
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('-password -googleId');
@@ -9,16 +11,23 @@ exports.getUserProfile = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Get User Profile Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Update current user profile
+// ------------------------
+// UPDATE CURRENT USER PROFILE
+// ------------------------
 exports.updateUserProfile = async (req, res) => {
   try {
     const updates = {};
     if (req.body.name) updates.name = req.body.name;
-    if (req.body.email) updates.email = req.body.email;
+    if (req.body.email) {
+      // Check for email uniqueness
+      const existingUser = await User.findOne({ email: req.body.email, _id: { $ne: req.userId } });
+      if (existingUser) return res.status(400).json({ message: 'Email already in use' });
+      updates.email = req.body.email;
+    }
     if (req.body.password) {
       const salt = await bcrypt.genSalt(10);
       updates.password = await bcrypt.hash(req.body.password, salt);
@@ -30,55 +39,63 @@ exports.updateUserProfile = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Update User Profile Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Delete current user account
+// ------------------------
+// DELETE CURRENT USER ACCOUNT
+// ------------------------
 exports.deleteUserAccount = async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.userId);
+    const user = await User.findByIdAndDelete(req.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
     res.json({ message: 'User account deleted successfully' });
   } catch (error) {
     console.error('Delete User Account Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Get all users (admin only)
+// ------------------------
+// GET ALL USERS (ADMIN ONLY)
+// ------------------------
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select('-password -googleId');
     res.json(users);
   } catch (error) {
     console.error('Get All Users Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Create a new user
+// ------------------------
+// CREATE NEW USER (ADMIN)
+// ------------------------
 exports.createUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Please provide name, email, and password' });
-    }
+    if (!name || !email || !password) return res.status(400).json({ message: 'Name, email, and password are required' });
 
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
-    const user = new User({ name, email, password });
-    await user.save();
+    const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+    const user = new User({ name, email, password: hashedPassword });
 
-    res.status(201).json({ message: 'User created' });
+    await user.save();
+    res.status(201).json({ message: 'User created successfully', user: { id: user._id, name: user.name, email: user.email } });
   } catch (error) {
     console.error('Create User Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Get user by ID
+// ------------------------
+// GET USER BY ID
+// ------------------------
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password -googleId');
@@ -86,16 +103,22 @@ exports.getUserById = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Get User By ID Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Update user by ID
+// ------------------------
+// UPDATE USER BY ID (ADMIN)
+// ------------------------
 exports.updateUserById = async (req, res) => {
   try {
     const updates = {};
     if (req.body.name) updates.name = req.body.name;
-    if (req.body.email) updates.email = req.body.email;
+    if (req.body.email) {
+      const existingUser = await User.findOne({ email: req.body.email, _id: { $ne: req.params.id } });
+      if (existingUser) return res.status(400).json({ message: 'Email already in use' });
+      updates.email = req.body.email;
+    }
     if (req.body.password) {
       const salt = await bcrypt.genSalt(10);
       updates.password = await bcrypt.hash(req.body.password, salt);
@@ -107,11 +130,13 @@ exports.updateUserById = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Update User By ID Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Delete user by ID
+// ------------------------
+// DELETE USER BY ID (ADMIN)
+// ------------------------
 exports.deleteUserById = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
@@ -120,6 +145,6 @@ exports.deleteUserById = async (req, res) => {
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Delete User By ID Error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
