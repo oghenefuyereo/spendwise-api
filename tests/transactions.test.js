@@ -3,6 +3,7 @@ const app = require('../app');
 const mongoose = require('mongoose');
 const Category = require('../models/category');
 const User = require('../models/user');
+const Transaction = require('../models/transaction');
 
 let token;
 let testCategoryId;
@@ -10,6 +11,17 @@ let testUserEmail = `testuser${Date.now()}@example.com`;
 
 beforeAll(async () => {
   try {
+    // Connect to test database if not already connected
+    const MONGO_URI = process.env.MONGO_URI_TEST || 'mongodb://127.0.0.1:27017/spendwise_test';
+    if (!mongoose.connection.readyState) {
+      await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
+    }
+
+    // Clear relevant collections
+    await User.deleteMany({});
+    await Category.deleteMany({});
+    await Transaction.deleteMany({});
+
     // Register test user
     await request(app)
       .post('/api/auth/register')
@@ -32,8 +44,8 @@ beforeAll(async () => {
     if (categoryRes.statusCode !== 201 || !categoryRes.body._id) {
       throw new Error('Failed to create test category');
     }
-
     testCategoryId = categoryRes.body._id;
+
   } catch (err) {
     console.error('Setup error:', err);
     throw err;
@@ -42,12 +54,13 @@ beforeAll(async () => {
 
 afterAll(async () => {
   try {
-    // Clean up test category
+    // Clean up transactions, category, and user
+    await Transaction.deleteMany({});
     if (testCategoryId) await Category.findByIdAndDelete(testCategoryId);
-
-    // Delete test user
     const user = await User.findOne({ email: testUserEmail });
     if (user) await User.findByIdAndDelete(user._id);
+
+    await mongoose.connection.close();
   } catch (err) {
     console.error('Teardown error:', err);
   }
@@ -82,7 +95,7 @@ describe('Transactions routes', () => {
     expect(res.body).toHaveProperty('type', newTransaction.type);
     expect(res.body).toHaveProperty('description', newTransaction.description);
 
-    // Check category whether populated or not
+    // Category check: works whether populated or just ID
     const categoryIdInResponse = res.body.category?._id || res.body.category;
     expect(categoryIdInResponse.toString()).toBe(testCategoryId);
   });
