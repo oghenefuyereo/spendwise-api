@@ -1,22 +1,61 @@
 const express = require('express');
+const { body, validationResult } = require('express-validator');
 const router = express.Router();
 
 const authMiddleware = require('../middleware/auth');
-const userController = require('../controllers/user'); // Make sure this path is correct
+const userController = require('../controllers/user');
 
-// Debug: log exported functions from controller
-console.log('userController keys:', Object.keys(userController));
+// ------------------------
+// Validation Middleware
+// ------------------------
+const createUserValidation = [
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+];
 
+const updateUserValidation = [
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+  body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+];
+
+// ------------------------
+// Validation Result Handler
+// ------------------------
+function validate(req, res, next) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+  next();
+}
+
+// ------------------------
+// Admin Middleware
+// ------------------------
+function adminOnly(req, res, next) {
+  if (!req.user?.isAdmin) return res.status(403).json({ message: 'Admin access required' });
+  next();
+}
+
+// ------------------------
+// Apply Auth Middleware
+// ------------------------
 router.use(authMiddleware);
 
+// ------------------------
+// Current User Routes
+// ------------------------
 router.get('/me', userController.getUserProfile);
-router.put('/me', userController.updateUserProfile);
+router.put('/me', updateUserValidation, validate, userController.updateUserProfile);
 router.delete('/me', userController.deleteUserAccount);
 
-router.get('/', userController.getAllUsers);
-router.post('/', userController.createUser);
-router.get('/:id', userController.getUserById);
-router.put('/:id', userController.updateUserById);
-router.delete('/:id', userController.deleteUserById);
+// ------------------------
+// Admin-only Routes
+// ------------------------
+router.get('/', adminOnly, userController.getAllUsers);
+router.post('/', adminOnly, createUserValidation, validate, userController.createUser);
+router.get('/:id', adminOnly, userController.getUserById);
+router.put('/:id', adminOnly, updateUserValidation, validate, userController.updateUserById);
+router.delete('/:id', adminOnly, userController.deleteUserById);
 
 module.exports = router;

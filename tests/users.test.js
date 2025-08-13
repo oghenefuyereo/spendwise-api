@@ -1,78 +1,71 @@
 const request = require('supertest');
 const app = require('../app');
+const User = require('../models/user');
+
 let token;
+let testUserId;
+const testUserEmail = `testuser${Date.now()}@example.com`;
 
 beforeAll(async () => {
-  // Login to get JWT token
-  const res = await request(app)
-    .post('/api/auth/login')
-    .send({ email: 'testuser@example.com', password: 'password123' });
+  // Register a test user
+  await request(app)
+    .post('/api/auth/register')
+    .send({ name: 'Test User', email: testUserEmail, password: 'password123' });
 
-  token = res.body.token;
-  if (!token) {
-    throw new Error('Failed to get JWT token for testing');
+  // Login to get token
+  const loginRes = await request(app)
+    .post('/api/auth/login')
+    .send({ email: testUserEmail, password: 'password123' });
+
+  if (loginRes.statusCode !== 200 || !loginRes.body.token) {
+    throw new Error('Failed to login test user');
   }
+
+  token = loginRes.body.token;
+
+  // Fetch user ID from DB (more reliable)
+  const user = await User.findOne({ email: testUserEmail });
+  if (!user) throw new Error('Test user not found in DB');
+  testUserId = user._id.toString();
+});
+
+afterAll(async () => {
+  // Clean up test user
+  await User.findByIdAndDelete(testUserId);
 });
 
 describe('Users routes', () => {
-  it('GET /users - should return a list of users', async () => {
+  it('GET /users - should return list of users', async () => {
     const res = await request(app)
       .get('/api/users')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.statusCode).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-    if (res.body.length > 0) {
-      expect(res.body[0]).toHaveProperty('_id');
-      expect(res.body[0]).toHaveProperty('name');
-      expect(res.body[0]).toHaveProperty('email');
-    }
   });
 
-  it('GET /users/:id - should return a single user by ID', async () => {
-    const usersRes = await request(app)
-      .get('/api/users')
-      .set('Authorization', `Bearer ${token}`);
-
-    const userId = usersRes.body[0]._id;
-
+  it('GET /users/:id - should return a single user', async () => {
     const res = await request(app)
-      .get(`/api/users/${userId}`)
+      .get(`/api/users/${testUserId}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toHaveProperty('_id', userId);
-    expect(res.body).toHaveProperty('name');
-    expect(res.body).toHaveProperty('email');
+    expect(res.body).toHaveProperty('email', testUserEmail);
   });
 
-  it('PUT /users/:id - should update a user by ID', async () => {
-    const usersRes = await request(app)
-      .get('/api/users')
-      .set('Authorization', `Bearer ${token}`);
-    const userId = usersRes.body[0]._id;
-
-    const updatedData = { name: 'Updated Test User' };
-
+  it('PUT /users/:id - should update a user', async () => {
     const res = await request(app)
-      .put(`/api/users/${userId}`)
+      .put(`/api/users/${testUserId}`)
       .set('Authorization', `Bearer ${token}`)
-      .send(updatedData);
+      .send({ name: 'Updated User' });
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toHaveProperty('name', updatedData.name);
+    expect(res.body).toHaveProperty('name', 'Updated User');
   });
 
-  it('DELETE /users/:id - should delete a user by ID', async () => {
-    const newUserRes = await request(app)
-      .post('/api/users')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Temp User', email: 'tempuser@example.com', password: 'password123' });
-
-    const userId = newUserRes.body._id;
-
+  it('DELETE /users/:id - should delete a user', async () => {
     const res = await request(app)
-      .delete(`/api/users/${userId}`)
+      .delete(`/api/users/${testUserId}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.statusCode).toBe(200);

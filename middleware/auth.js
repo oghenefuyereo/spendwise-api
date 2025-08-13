@@ -2,6 +2,10 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not defined in environment variables');
+}
+
 module.exports = function (req, res, next) {
   const authHeader = req.headers.authorization;
 
@@ -13,7 +17,6 @@ module.exports = function (req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    // Attach userId directly to req.user for downstream use
     req.user = { userId: decoded.userId };
     next();
   } catch (err) {

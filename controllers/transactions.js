@@ -1,16 +1,25 @@
+const { body, validationResult } = require('express-validator');
 const Transaction = require('../models/transaction');
+
+// ------------------------
+// VALIDATION MIDDLEWARE
+// ------------------------
+exports.validateTransaction = [
+  body('amount').notEmpty().withMessage('Amount is required'),
+  body('type').notEmpty().withMessage('Type is required'),
+  body('category').notEmpty().withMessage('Category is required'),
+];
 
 // ------------------------
 // CREATE NEW TRANSACTION
 // ------------------------
 exports.createTransaction = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   try {
     const { amount, type, category, description, date } = req.body;
     const user = req.user.userId;
-
-    if (!amount || !type || !category) {
-      return res.status(400).json({ message: 'Amount, type, and category are required' });
-    }
 
     const transaction = new Transaction({
       user,
@@ -18,7 +27,7 @@ exports.createTransaction = async (req, res) => {
       type,
       category,
       description: description || '',
-      date: date || new Date()
+      date: date || new Date(),
     });
 
     await transaction.save();
@@ -66,15 +75,21 @@ exports.getTransactionById = async (req, res) => {
 exports.updateTransaction = async (req, res) => {
   try {
     const user = req.user.userId;
+    const updates = {};
     const { amount, type, category, description, date } = req.body;
 
-    if (!amount && !type && !category && !description && !date) {
+    if (amount !== undefined) updates.amount = amount;
+    if (type !== undefined) updates.type = type;
+    if (category !== undefined) updates.category = category;
+    if (description !== undefined) updates.description = description;
+    if (date !== undefined) updates.date = date;
+
+    if (Object.keys(updates).length === 0)
       return res.status(400).json({ message: 'At least one field is required to update' });
-    }
 
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, user },
-      { amount, type, category, description, date },
+      updates,
       { new: true }
     ).populate('category');
 

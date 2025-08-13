@@ -1,12 +1,11 @@
 module.exports = (err, req, res, next) => {
-  console.error(err.stack);
+  console.error(err.stack || err);
 
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
   res.status(statusCode).json({
     error: message,
-    // Optionally include stack trace only in development mode
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

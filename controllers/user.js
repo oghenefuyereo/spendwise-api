@@ -1,6 +1,17 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
 
+// Middleware helpers (to use in routes)
+const requireAuth = (req, res, next) => {
+  if (!req.userId) return res.status(401).json({ message: 'Unauthorized' });
+  next();
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden: Admins only' });
+  next();
+};
+
 // ------------------------
 // GET CURRENT USER PROFILE
 // ------------------------
@@ -23,15 +34,11 @@ exports.updateUserProfile = async (req, res) => {
     const updates = {};
     if (req.body.name) updates.name = req.body.name;
     if (req.body.email) {
-      // Check for email uniqueness
       const existingUser = await User.findOne({ email: req.body.email, _id: { $ne: req.userId } });
       if (existingUser) return res.status(400).json({ message: 'Email already in use' });
       updates.email = req.body.email;
     }
-    if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(req.body.password, salt);
-    }
+    if (req.body.password) updates.password = await bcrypt.hash(req.body.password, await bcrypt.genSalt(10));
 
     const user = await User.findByIdAndUpdate(req.userId, updates, { new: true }).select('-password -googleId');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -94,7 +101,7 @@ exports.createUser = async (req, res) => {
 };
 
 // ------------------------
-// GET USER BY ID
+// GET USER BY ID (ADMIN)
 // ------------------------
 exports.getUserById = async (req, res) => {
   try {
@@ -119,10 +126,7 @@ exports.updateUserById = async (req, res) => {
       if (existingUser) return res.status(400).json({ message: 'Email already in use' });
       updates.email = req.body.email;
     }
-    if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(req.body.password, salt);
-    }
+    if (req.body.password) updates.password = await bcrypt.hash(req.body.password, await bcrypt.genSalt(10));
 
     const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password -googleId');
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -148,3 +152,6 @@ exports.deleteUserById = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+module.exports.requireAuth = requireAuth;
+module.exports.requireAdmin = requireAdmin;

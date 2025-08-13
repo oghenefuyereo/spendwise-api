@@ -1,16 +1,24 @@
+const { body, validationResult } = require('express-validator');
 const Category = require('../models/category');
+
+// ------------------------
+// VALIDATION MIDDLEWARE
+// ------------------------
+exports.validateCategory = [
+  body('name').trim().notEmpty().withMessage('Name is required'),
+  body('type').trim().notEmpty().withMessage('Type is required'),
+];
 
 // ------------------------
 // CREATE CATEGORY
 // ------------------------
 exports.createCategory = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   try {
     const { name, type } = req.body;
     const user = req.user.userId;
-
-    if (!name || !type) {
-      return res.status(400).json({ message: 'Name and type are required' });
-    }
 
     const category = new Category({ name, type, user });
     await category.save();
@@ -60,17 +68,24 @@ exports.getCategoryById = async (req, res) => {
 // UPDATE CATEGORY
 // ------------------------
 exports.updateCategory = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty() && Object.keys(req.body).length > 0)
+    return res.status(400).json({ errors: errors.array() });
+
   try {
     const user = req.user.userId;
+    const updates = {};
     const { name, type } = req.body;
 
-    if (!name && !type) {
+    if (name) updates.name = name;
+    if (type) updates.type = type;
+
+    if (Object.keys(updates).length === 0)
       return res.status(400).json({ message: 'At least one field (name or type) is required to update' });
-    }
 
     const category = await Category.findOneAndUpdate(
       { _id: req.params.id, user },
-      { name, type },
+      updates,
       { new: true }
     );
 

@@ -8,49 +8,56 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger/swagger.json");
 const errorHandler = require("./middleware/errorHandler");
 
-// Load environment variables from .env file
+// Load environment variables
 dotenv.config();
 
-// Passport configuration (ensure path is correct)
+// Passport configuration
 require("./config/passport");
 
 const app = express();
 
-// Apply security-related HTTP headers
+// Security headers
 app.use(helmet());
 
-// Enable CORS - allow origin from env variable or all origins by default
+// CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: process.env.CORS_ORIGIN || "*", // restrict in production if needed
   })
 );
 
-// HTTP request logging middleware
+// HTTP request logging
 app.use(morgan("dev"));
 
-// Parse JSON bodies
-app.use(express.json());
+// Body parser with size limit
+app.use(express.json({ limit: "10mb" }));
 
-// Initialize Passport for authentication
+// Initialize Passport
 app.use(passport.initialize());
 
-// Serve API docs using Swagger UI at /api-docs
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// Serve Swagger only in non-production environments
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+}
 
-// API route handlers
+// API routes
 app.use("/api/auth", require("./routes/auth"));
-app.use("/api/users", require("./routes/users"));  
+app.use("/api/users", require("./routes/users"));
 app.use("/api/transactions", require("./routes/transactions"));
 app.use("/api/categories", require("./routes/categories"));
 app.use("/api/goals", require("./routes/goals"));
 
-// Root route to confirm API is running
+// Root route
 app.get("/", (req, res) => {
   res.json({ message: "Spendwise API is running..." });
 });
 
-// Centralized error handling middleware
+// 404 handler
+app.use((req, res, next) => {
+  res.status(404).json({ message: "Endpoint not found" });
+});
+
+// Centralized error handling
 app.use(errorHandler);
 
 module.exports = app;

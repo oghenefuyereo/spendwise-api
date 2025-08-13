@@ -1,22 +1,30 @@
+const { body, validationResult } = require('express-validator');
 const Goal = require('../models/goal');
+
+// ------------------------
+// VALIDATION MIDDLEWARE
+// ------------------------
+exports.validateGoal = [
+  body('targetamount').notEmpty().withMessage('Target amount is required'),
+  body('deadline').notEmpty().withMessage('Deadline is required'),
+];
 
 // ------------------------
 // CREATE A NEW GOAL
 // ------------------------
 exports.createGoal = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   try {
     const { targetamount, currentprogress, deadline } = req.body;
     const user = req.user.userId;
-
-    if (!targetamount || !deadline) {
-      return res.status(400).json({ message: 'Target amount and deadline are required' });
-    }
 
     const goal = new Goal({
       user,
       targetamount,
       currentprogress: currentprogress || 0,
-      deadline
+      deadline,
     });
 
     await goal.save();
@@ -64,17 +72,17 @@ exports.getGoalById = async (req, res) => {
 exports.updateGoal = async (req, res) => {
   try {
     const user = req.user.userId;
+    const updates = {};
     const { targetamount, currentprogress, deadline } = req.body;
 
-    if (!targetamount && !currentprogress && !deadline) {
-      return res.status(400).json({ message: 'At least one field is required to update' });
-    }
+    if (targetamount !== undefined) updates.targetamount = targetamount;
+    if (currentprogress !== undefined) updates.currentprogress = currentprogress;
+    if (deadline !== undefined) updates.deadline = deadline;
 
-    const goal = await Goal.findOneAndUpdate(
-      { _id: req.params.id, user },
-      { targetamount, currentprogress, deadline },
-      { new: true }
-    );
+    if (Object.keys(updates).length === 0)
+      return res.status(400).json({ message: 'At least one field is required to update' });
+
+    const goal = await Goal.findOneAndUpdate({ _id: req.params.id, user }, updates, { new: true });
 
     if (!goal) return res.status(404).json({ message: 'Goal not found or not authorized' });
 
