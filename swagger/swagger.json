@@ -159,30 +159,7 @@
         }
       }
     },
-    "/auth/google": {
-      "post": {
-        "tags": ["Auth"],
-        "summary": "Google OAuth login/signup",
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GoogleAuthRequest" } } }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Google login/signup",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
-          },
-          "400": {
-            "description": "Missing tokenId",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
-          },
-          "401": {
-            "description": "Invalid Google token",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
-          }
-        }
-      }
-    },
+    
     "/users": {
       "get": {
         "tags": ["Users"],
