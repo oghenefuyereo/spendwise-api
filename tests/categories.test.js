@@ -23,7 +23,7 @@ beforeAll(async () => {
     .post("/api/categories")
     .set("Authorization", `Bearer ${token}`)
     .send({ name: "Test Category", type: "expense" });
-  
+
   categoryId = catRes.body._id;
 });
 
@@ -34,14 +34,37 @@ afterAll(async () => {
 
 describe("Categories API", () => {
   test("GET /categories - should return all categories", async () => {
-    const res = await request(app).get("/api/categories").set("Authorization", `Bearer ${token}`);
+    const res = await request(app)
+      .get("/api/categories")
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   test("GET /categories/:id - should return a specific category", async () => {
-    const res = await request(app).get(`/api/categories/${categoryId}`).set("Authorization", `Bearer ${token}`);
+    const res = await request(app)
+      .get(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("name", "Test Category");
+  });
+
+  // Data validation tests
+  test("POST /categories - should fail with invalid data", async () => {
+    const res = await request(app)
+      .post("/api/categories")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "", type: "" }); // Invalid
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty("errors");
+  });
+
+  test("PUT /categories/:id - should fail with invalid data", async () => {
+    const res = await request(app)
+      .put(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "", type: "" }); // Invalid
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty("errors");
   });
 });
