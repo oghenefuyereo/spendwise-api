@@ -6,7 +6,7 @@ const goalSchema = new mongoose.Schema({
   currentProgress: { type: Number, default: 0 },
   deadline: { type: Date, required: true }
 }, {
-  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } // automatic createdAt and updatedAt
+  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' } 
 });
 
 module.exports = mongoose.model('goal', goalSchema);

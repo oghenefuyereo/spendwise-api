@@ -9,5 +9,5 @@ const transactionSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now }
 });
 
-// Export the model with lowercase collection name for consistency
+
 module.exports = mongoose.model('transaction', transactionSchema);

@@ -98,7 +98,7 @@ exports.googleAuth = async (req, res) => {
       user = await User.findOne({ email });
       if (user && !user.googleId) {
         user.googleId = googleId;
-        user.password = undefined; // remove password to enforce Google login
+        user.password = undefined; 
         await user.save();
       } else if (!user) {
         user = new User({ name, email, googleId });
@@ -146,7 +146,7 @@ exports.updateUserProfile = async (req, res) => {
       if (emailExists) return res.status(400).json({ message: 'Email already in use' });
       updates.email = email;
     }
-    if (password) updates.password = password; // pre-save hook hashes it
+    if (password) updates.password = password; 
 
     const user = await User.findByIdAndUpdate(req.userId, updates, { new: true }).select('-password -googleId');
     if (!user) return res.status(404).json({ message: 'User not found' });

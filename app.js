@@ -22,7 +22,7 @@ app.use(helmet());
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*", // restrict in production if needed
+    origin: process.env.CORS_ORIGIN || "*", 
   })
 );
 

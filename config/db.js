@@ -8,7 +8,7 @@ const connectDB = async () => {
       throw new Error("MONGO_URI is not defined in environment variables");
     }
 
-    // Connect without deprecated options
+    // Connect to MongoDB
     await mongoose.connect(MONGO_URI);
 
     console.log("MongoDB connected");

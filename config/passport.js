@@ -6,7 +6,7 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
   throw new Error("Google OAuth environment variables are not defined");
 }
 
-// Dynamically set callback URL
+// Use environment variable for callback URL
 const callbackURL =
   process.env.NODE_ENV === "production"
     ? "https://spendwise-api-zrh5.onrender.com/api/auth/google/callback"
