@@ -5,7 +5,7 @@ const Goal = require('../models/goal');
 // VALIDATION MIDDLEWARE
 // ------------------------
 exports.validateGoal = [
-  body('targetamount').notEmpty().withMessage('Target amount is required'),
+  body('targetAmount').notEmpty().withMessage('Target amount is required'),
   body('deadline').notEmpty().withMessage('Deadline is required'),
 ];
 
@@ -17,13 +17,13 @@ exports.createGoal = async (req, res) => {
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   try {
-    const { targetamount, currentprogress, deadline } = req.body;
+    const { targetAmount, currentProgress, deadline } = req.body;
     const user = req.user.userId;
 
     const goal = new Goal({
       user,
-      targetamount,
-      currentprogress: currentprogress || 0,
+      targetAmount,
+      currentProgress: currentProgress || 0,
       deadline,
     });
 
@@ -73,10 +73,10 @@ exports.updateGoal = async (req, res) => {
   try {
     const user = req.user.userId;
     const updates = {};
-    const { targetamount, currentprogress, deadline } = req.body;
+    const { targetAmount, currentProgress, deadline } = req.body;
 
-    if (targetamount !== undefined) updates.targetamount = targetamount;
-    if (currentprogress !== undefined) updates.currentprogress = currentprogress;
+    if (targetAmount !== undefined) updates.targetAmount = targetAmount;
+    if (currentProgress !== undefined) updates.currentProgress = currentProgress;
     if (deadline !== undefined) updates.deadline = deadline;
 
     if (Object.keys(updates).length === 0)

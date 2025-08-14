@@ -101,10 +101,10 @@
       },
       "Goal": {
         "type":"object",
-        "required":["targetamount","deadline"],
+        "required":["targetAmount","deadline"],
         "properties":{
-          "targetamount":{"type":"number","example":1000},
-          "currentprogress":{"type":"number","nullable":true,"example":200},
+          "targetAmount":{"type":"number","example":1000},
+          "currentProgress":{"type":"number","nullable":true,"example":200},
           "deadline":{"type":"string","format":"date","example":"2025-12-31"}
         }
       }
