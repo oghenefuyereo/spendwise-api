@@ -35,10 +35,8 @@ app.use(express.json({ limit: "10mb" }));
 // Initialize Passport
 app.use(passport.initialize());
 
-// Serve Swagger only in non-production environments
-if (process.env.NODE_ENV !== "production") {
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-}
+// ✅ Always serve Swagger in all environments
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API routes
 app.use("/api/auth", require("./routes/auth"));
