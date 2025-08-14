@@ -1,60 +1,53 @@
-const request = require('supertest');
-const app = require('../app');
-const mongoose = require('mongoose');
-const User = require('../models/user');
-const Goal = require('../models/goal');
+const request = require("supertest");
+const app = require("../app");
+const Goal = require("../models/goal");
+const User = require("../models/user");
 
-let token, goalId, userId;
+let token;
+let goalId;
+let userId;
+let testUserEmail = `goaluser${Date.now()}@example.com`;
 
 beforeAll(async () => {
-  const user = await User.create({
-    name: 'Goal User',
-    email: `goaluser${Date.now()}@example.com`,
-    password: 'strongpassword'
+  const userRes = await request(app).post("/api/auth/register").send({
+    name: "Goal User",
+    email: testUserEmail,
+    password: "Test1234!",
   });
+
+  token = userRes.body.token;
+  const user = await User.findOne({ email: testUserEmail });
   userId = user._id;
 
-  const login = await request(app)
-    .post('/api/auth/login')
-    .send({ email: user.email, password: 'strongpassword' });
-
-  token = login.body.token;
-
   const goalRes = await request(app)
-    .post('/api/goals')
-    .set('Authorization', `Bearer ${token}`)
+    .post("/api/goals")
+    .set("Authorization", `Bearer ${token}`)
     .send({
-      title: 'Test Goal',
+      title: "Test Goal",
       targetAmount: 1000,
       currentAmount: 0,
-      user: userId
+      user: userId,
+      deadline: new Date(),
     });
 
   goalId = goalRes.body._id;
 });
 
 afterAll(async () => {
-  if (goalId) await Goal.deleteMany({ _id: goalId });
-  if (userId) await User.deleteMany({ _id: userId });
-  await mongoose.connection.close();
+  await Goal.deleteOne({ _id: goalId });
+  await User.deleteOne({ _id: userId });
 });
 
-describe('Goals API', () => {
-  test('GET /goals', async () => {
-    const res = await request(app)
-      .get('/api/goals')
-      .set('Authorization', `Bearer ${token}`);
-
+describe("Goals API", () => {
+  test("GET /goals - should return all goals", async () => {
+    const res = await request(app).get("/api/goals").set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
-  test('GET /goals/:id', async () => {
-    const res = await request(app)
-      .get(`/api/goals/${goalId}`)
-      .set('Authorization', `Bearer ${token}`);
-
+  test("GET /goals/:id - should return a specific goal", async () => {
+    const res = await request(app).get(`/api/goals/${goalId}`).set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('targetAmount', 1000);
+    expect(res.body).toHaveProperty("targetAmount", 1000);
   });
 });
