@@ -7,39 +7,42 @@ const authController = require('../controllers/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Validation middleware for register
+// ------------------------
+// Validation middleware
+// ------------------------
 const registerValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ];
 
-// Validation middleware for login
 const loginValidation = [
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
-// Validation middleware for updating user
 const updateValidation = [
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
   body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ];
 
-// Middleware to check validation results
+// Middleware to handle validation errors
 function validate(req, res, next) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   next();
 }
 
-// JWT authentication middleware
+// ------------------------
+// JWT helpers & middleware
+// ------------------------
+function generateJwt(user) {
+  return jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
+}
+
 function authenticateJwt(req, res, next) {
   const authHeader = req.headers.authorization;
-
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Authorization header missing or malformed' });
   }
@@ -54,35 +57,39 @@ function authenticateJwt(req, res, next) {
   });
 }
 
-// Helper to generate JWT token
-function generateJwt(user) {
-  return jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
-}
-
+// ------------------------
 // Routes
+// ------------------------
 
-// Register a new user
+// Register
 router.post('/register', registerValidation, validate, authController.register);
 
-// Login user
-router.post('/login', loginValidation, validate, authController.login);
+// Login
+router.post('/login', loginValidation, validate, async (req, res, next) => {
+  try {
+    // Use existing login controller
+    await authController.login(req, res);
+    // login controller should return token
+  } catch (err) {
+    next(err);
+  }
+});
 
-// Get logged-in user's profile (JWT protected)
+// Get current user
 router.get('/me', authenticateJwt, authController.getUserProfile);
 
-// Update logged-in user's profile (JWT protected)
+// Update user
 router.put('/me', authenticateJwt, updateValidation, validate, authController.updateUserProfile);
 
-// Delete logged-in user's account (JWT protected)
+// Delete user
 router.delete('/me', authenticateJwt, authController.deleteUserAccount);
 
-// Passport Google OAuth routes
+// ------------------------
+// Passport Google OAuth
+// ------------------------
 
-// Redirect user to Google OAuth
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+// Redirect to Google OAuth
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 // Google OAuth callback
 router.get(
@@ -90,24 +97,30 @@ router.get(
   passport.authenticate('google', { session: false, failureRedirect: '/auth/google/failure' }),
   (req, res) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: 'Google authentication failed' });
-      }
+      if (!req.user) return res.status(401).json({ message: 'Google authentication failed' });
+
+      // Normalize user object
+      const user = {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+      };
+
       const token = generateJwt(req.user);
-      res.json({ token, user: req.user });
-    } catch (error) {
-      console.error('Google OAuth callback error:', error);
+      res.json({ token, user });
+    } catch (err) {
+      console.error('Google OAuth callback error:', err);
       res.status(500).json({ message: 'Internal server error' });
     }
   }
 );
 
-// OAuth failure handler
+// OAuth failure
 router.get('/google/failure', (req, res) => {
   res.status(401).json({ message: 'Google authentication failed' });
 });
 
-// TokenId-based Google OAuth (client sends id token for verification)
+// TokenId-based Google login
 router.post('/google', authController.googleAuth);
 
 module.exports = router;

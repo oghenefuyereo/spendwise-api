@@ -1,5 +1,4 @@
 const User = require('../models/user');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const { body, validationResult } = require('express-validator');
@@ -35,16 +34,17 @@ exports.register = async (req, res) => {
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   try {
-    const { name, email, password } = req.body;
+    const { name, email: rawEmail, password } = req.body;
+    const email = rawEmail.toLowerCase();
 
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already in use' });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword });
+    const user = new User({ name, email, password });
     await user.save();
 
-    res.status(201).json({ message: 'User registered successfully' });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
+    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
     console.error('Register Error:', err);
     res.status(500).json({ message: 'Server error' });
@@ -59,13 +59,17 @@ exports.login = async (req, res) => {
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   try {
-    const { email, password } = req.body;
+    const { email: rawEmail, password } = req.body;
+    const email = rawEmail.toLowerCase();
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
-    if (!user.password) return res.status(400).json({ message: 'Please login with Google OAuth' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    if (user.googleId && !user.password) {
+      return res.status(400).json({ message: 'Please login with Google OAuth' });
+    }
+
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
@@ -86,14 +90,15 @@ exports.googleAuth = async (req, res) => {
   try {
     const ticket = await client.verifyIdToken({ idToken: tokenId, audience: GOOGLE_CLIENT_ID });
     const payload = ticket.getPayload();
-    const { email, name, sub: googleId } = payload;
+    const { email: rawEmail, name, sub: googleId } = payload;
+    const email = rawEmail.toLowerCase();
 
     let user = await User.findOne({ googleId });
     if (!user) {
       user = await User.findOne({ email });
       if (user && !user.googleId) {
         user.googleId = googleId;
-        user.password = undefined;
+        user.password = undefined; // remove password to enforce Google login
         await user.save();
       } else if (!user) {
         user = new User({ name, email, googleId });
@@ -132,7 +137,8 @@ exports.updateUserProfile = async (req, res) => {
 
   try {
     const updates = {};
-    const { name, email, password } = req.body;
+    const { name, email: rawEmail, password } = req.body;
+    const email = rawEmail?.toLowerCase();
 
     if (name) updates.name = name;
     if (email) {
@@ -140,7 +146,7 @@ exports.updateUserProfile = async (req, res) => {
       if (emailExists) return res.status(400).json({ message: 'Email already in use' });
       updates.email = email;
     }
-    if (password) updates.password = await bcrypt.hash(password, 10);
+    if (password) updates.password = password; // pre-save hook hashes it
 
     const user = await User.findByIdAndUpdate(req.userId, updates, { new: true }).select('-password -googleId');
     if (!user) return res.status(404).json({ message: 'User not found' });

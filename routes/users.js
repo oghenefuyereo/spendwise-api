@@ -30,14 +30,6 @@ function validate(req, res, next) {
 }
 
 // ------------------------
-// Admin Middleware
-// ------------------------
-function adminOnly(req, res, next) {
-  if (!req.user?.isAdmin) return res.status(403).json({ message: 'Admin access required' });
-  next();
-}
-
-// ------------------------
 // Apply Auth Middleware
 // ------------------------
 router.use(authMiddleware);
@@ -50,12 +42,12 @@ router.put('/me', updateUserValidation, validate, userController.updateUserProfi
 router.delete('/me', userController.deleteUserAccount);
 
 // ------------------------
-// Admin-only Routes
+// General User Routes (No Admin Required)
 // ------------------------
-router.get('/', adminOnly, userController.getAllUsers);
-router.post('/', adminOnly, createUserValidation, validate, userController.createUser);
-router.get('/:id', adminOnly, userController.getUserById);
-router.put('/:id', adminOnly, updateUserValidation, validate, userController.updateUserById);
-router.delete('/:id', adminOnly, userController.deleteUserById);
+router.get('/', userController.getAllUsers);
+router.post('/', createUserValidation, validate, userController.createUser);
+router.get('/:id', userController.getUserById);
+router.put('/:id', updateUserValidation, validate, userController.updateUserById);
+router.delete('/:id', userController.deleteUserById);
 
 module.exports = router;
